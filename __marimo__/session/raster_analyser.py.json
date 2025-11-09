@@ -187,19 +187,6 @@
       "console": []
     },
     {
-      "id": "ImrF",
-      "code_hash": "c04b52fa8ceb9a6dbb8304b08d351cb7",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "application/json": "[\"text/plain+float:500.0\", \"text/plain+float:-500.0\"]"
-          }
-        }
-      ],
-      "console": []
-    },
-    {
       "id": "fVGl",
       "code_hash": "4d21718aa232fd7a0dbd6fa73d99a4f6",
       "outputs": [
@@ -213,16 +200,74 @@
       "console": []
     },
     {
-      "id": "GMvf",
-      "code_hash": "382eb8a3b641d5dc3ee36a2b875e8697",
+      "id": "QnJd",
+      "code_hash": "2a47a7afed3aa8bd67cb8a36be83a478",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/html": "<marimo-ui-element object-id='GMvf-0' random-id='e4404222-541a-86ef-032e-04a77297a8ad'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;Property&#92;&quot;:&#92;&quot;CRS&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;EPSG:25833&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;EPSG:32633&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;X Resolution&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;500.0&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;499.99999999520986&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Y Resolution&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;-500.0&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;-499.99999999520975&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Width&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;2455&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;2385&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Height&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;3058&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;2983&#92;&quot;}]&quot;' data-total-rows='5' data-total-columns='3' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='20' data-field-types='[[&quot;Property&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;Naturskog&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;Hakkespett&quot;,[&quot;string&quot;,&quot;str&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='false' data-show-data-types='true' data-show-page-size-selector='false' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+            "text/plain": ""
           }
         }
       ],
+      "console": []
+    },
+    {
+      "id": "GMvf",
+      "code_hash": "1add30761bf05ad0d5b85fc7ffce33f1",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='GMvf-0' random-id='cb19b3cf-e885-417a-9f43-8583ed1efd0c'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;Property&#92;&quot;:&#92;&quot;CRS&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;EPSG:25833&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;EPSG:25833&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;X Resolution&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;500.0&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;500.0&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Y Resolution&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;-500.0&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;-500.0&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Width&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;2455&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;2455&#92;&quot;},{&#92;&quot;Property&#92;&quot;:&#92;&quot;Height&#92;&quot;,&#92;&quot;Naturskog&#92;&quot;:&#92;&quot;3058&#92;&quot;,&#92;&quot;Hakkespett&#92;&quot;:&#92;&quot;3058&#92;&quot;}]&quot;' data-total-rows='5' data-total-columns='3' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='20' data-field-types='[[&quot;Property&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;Naturskog&quot;,[&quot;string&quot;,&quot;str&quot;]],[&quot;Hakkespett&quot;,[&quot;string&quot;,&quot;str&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='false' data-show-data-types='true' data-show-page-size-selector='false' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Pytp",
+      "code_hash": "f619c0ac7865396e156df047a67e7b09",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h3 id=\"korrelasjon\">Korrelasjon</h3></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "qntl",
+      "code_hash": "a075039af7dc562cb63bca1cde4ead2d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='qntl-0' random-id='09bb2d92-38df-bdeb-a769-e524d93ab8ac'><marimo-table data-initial-value='[]' data-label='null' data-data='&quot;[{&#92;&quot;Naturskog_klasse&#92;&quot;:1,&#92;&quot;Gjennomsnitt&#92;&quot;:0.8831772,&#92;&quot;Median&#92;&quot;:0.9219981,&#92;&quot;Std_avvik&#92;&quot;:0.14543007,&#92;&quot;Min&#92;&quot;:0.0,&#92;&quot;Maks&#92;&quot;:1.0,&#92;&quot;Antall_piksler&#92;&quot;:482143},{&#92;&quot;Naturskog_klasse&#92;&quot;:2,&#92;&quot;Gjennomsnitt&#92;&quot;:0.79927725,&#92;&quot;Median&#92;&quot;:0.8286417,&#92;&quot;Std_avvik&#92;&quot;:0.15561144,&#92;&quot;Min&#92;&quot;:0.0,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:274459},{&#92;&quot;Naturskog_klasse&#92;&quot;:3,&#92;&quot;Gjennomsnitt&#92;&quot;:0.89488405,&#92;&quot;Median&#92;&quot;:0.958402,&#92;&quot;Std_avvik&#92;&quot;:0.14910434,&#92;&quot;Min&#92;&quot;:0.0,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:19148},{&#92;&quot;Naturskog_klasse&#92;&quot;:4,&#92;&quot;Gjennomsnitt&#92;&quot;:0.89821243,&#92;&quot;Median&#92;&quot;:0.9505871,&#92;&quot;Std_avvik&#92;&quot;:0.12692708,&#92;&quot;Min&#92;&quot;:0.0,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:7200},{&#92;&quot;Naturskog_klasse&#92;&quot;:5,&#92;&quot;Gjennomsnitt&#92;&quot;:0.9216115,&#92;&quot;Median&#92;&quot;:0.9773065,&#92;&quot;Std_avvik&#92;&quot;:0.11079928,&#92;&quot;Min&#92;&quot;:0.0,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:52898},{&#92;&quot;Naturskog_klasse&#92;&quot;:6,&#92;&quot;Gjennomsnitt&#92;&quot;:0.8080953,&#92;&quot;Median&#92;&quot;:0.82000303,&#92;&quot;Std_avvik&#92;&quot;:0.1137419,&#92;&quot;Min&#92;&quot;:0.15714131,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:8036},{&#92;&quot;Naturskog_klasse&#92;&quot;:7,&#92;&quot;Gjennomsnitt&#92;&quot;:0.92079335,&#92;&quot;Median&#92;&quot;:0.9532144,&#92;&quot;Std_avvik&#92;&quot;:0.0979258,&#92;&quot;Min&#92;&quot;:1.6034491e-11,&#92;&quot;Maks&#92;&quot;:0.9985714,&#92;&quot;Antall_piksler&#92;&quot;:5010}]&quot;' data-total-rows='7' data-total-columns='7' data-max-columns='50' data-banner-text='&quot;&quot;' data-pagination='true' data-page-size='20' data-field-types='[[&quot;Naturskog_klasse&quot;,[&quot;integer&quot;,&quot;i64&quot;]],[&quot;Gjennomsnitt&quot;,[&quot;number&quot;,&quot;f32&quot;]],[&quot;Median&quot;,[&quot;number&quot;,&quot;f32&quot;]],[&quot;Std_avvik&quot;,[&quot;number&quot;,&quot;f32&quot;]],[&quot;Min&quot;,[&quot;number&quot;,&quot;f32&quot;]],[&quot;Maks&quot;,[&quot;number&quot;,&quot;f32&quot;]],[&quot;Antall_piksler&quot;,[&quot;integer&quot;,&quot;u32&quot;]]]' data-show-filters='true' data-show-download='true' data-show-column-summaries='false' data-show-data-types='true' data-show-page-size-selector='true' data-show-column-explorer='true' data-show-chart-builder='true' data-row-headers='[]' data-has-stable-row-id='false' data-lazy='false' data-preload='false'></marimo-table></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bZlH",
+      "code_hash": "41180076408df1302144e7437e03ee18",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<marimo-ui-element object-id='bZlH-0' random-id='5dc73dee-66ac-02bd-67d1-bf0718422462'><marimo-vega data-initial-value='{}' data-label='null' data-spec='{&quot;config&quot;:{&quot;view&quot;:{&quot;continuousWidth&quot;:300,&quot;continuousHeight&quot;:300}},&quot;data&quot;:{&quot;url&quot;:&quot;./@file/10187411-819582-5njg4iC6.arrow&quot;,&quot;format&quot;:{&quot;type&quot;:&quot;arrow&quot;}},&quot;mark&quot;:{&quot;type&quot;:&quot;boxplot&quot;},&quot;encoding&quot;:{&quot;color&quot;:{&quot;field&quot;:&quot;Naturskog_klasse&quot;,&quot;legend&quot;:null,&quot;type&quot;:&quot;ordinal&quot;},&quot;tooltip&quot;:[{&quot;field&quot;:&quot;Naturskog_klasse&quot;,&quot;title&quot;:&quot;Klasse&quot;,&quot;type&quot;:&quot;ordinal&quot;},{&quot;field&quot;:&quot;Hakkespett_rikhet&quot;,&quot;format&quot;:&quot;.3f&quot;,&quot;title&quot;:&quot;Rikhet&quot;,&quot;type&quot;:&quot;quantitative&quot;}],&quot;x&quot;:{&quot;field&quot;:&quot;Naturskog_klasse&quot;,&quot;title&quot;:&quot;Naturskogsn\u00e6rhet klasse&quot;,&quot;type&quot;:&quot;ordinal&quot;},&quot;y&quot;:{&quot;field&quot;:&quot;Hakkespett_rikhet&quot;,&quot;title&quot;:&quot;Hakkespett-rikhet (0-1)&quot;,&quot;type&quot;:&quot;quantitative&quot;}},&quot;height&quot;:400,&quot;title&quot;:&quot;Hakkespett-rikhet fordeling per naturskogsn\u00e6rhet klasse&quot;,&quot;width&quot;:600,&quot;&#36;schema&quot;:&quot;https://vega.github.io/schema/vega-lite/v5.20.1.json&quot;}' data-chart-selection='true' data-field-selection='true'></marimo-vega></marimo-ui-element>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "UVNw",
+      "code_hash": null,
+      "outputs": [],
       "console": []
     }
   ]

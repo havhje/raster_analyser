@@ -157,12 +157,6 @@ def _(Resampling, naturskog):
 
 
 @app.cell
-def _(naturskog_500m):
-    naturskog_500m.rio.resolution()
-    return
-
-
-@app.cell
 def _(naturskog_500m, naturskog_verdi):
     naturskog_500m_verdi = naturskog_500m.values.flatten()
 
@@ -171,7 +165,16 @@ def _(naturskog_500m, naturskog_verdi):
 
 
 @app.cell
-def _(hakkespett, naturskog_500m, pl):
+def _(Resampling, hakkespett, naturskog_500m):
+    hakkespett_aligned = hakkespett.rio.reproject_match(
+        naturskog_500m,
+        resampling=Resampling.bilinear,  # Good for continuous data
+    )
+    return (hakkespett_aligned,)
+
+
+@app.cell
+def _(hakkespett_aligned, naturskog_500m, pl):
     # Compare spatial properties
     comparison = pl.DataFrame(
         {
@@ -184,16 +187,94 @@ def _(hakkespett, naturskog_500m, pl):
                 str(naturskog_500m.rio.height),
             ],
             "Hakkespett": [
-                str(hakkespett.rio.crs),
-                str(hakkespett.rio.resolution()[0]),
-                str(hakkespett.rio.resolution()[1]),
-                str(hakkespett.rio.width),
-                str(hakkespett.rio.height),
+                str(hakkespett_aligned.rio.crs),
+                str(hakkespett_aligned.rio.resolution()[0]),
+                str(hakkespett_aligned.rio.resolution()[1]),
+                str(hakkespett_aligned.rio.width),
+                str(hakkespett_aligned.rio.height),
             ],
         }
     )
 
     comparison
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ### Korrelasjon
+    """)
+    return
+
+
+@app.cell
+def _(hakkespett_aligned, naturskog_500m, np, pl):
+    # 1. Select first band and flatten
+    naturskog_flat = naturskog_500m[0].values.flatten()
+    hakkespett_flat = hakkespett_aligned[0].values.flatten()
+
+    # 2. Remove NaN and NoData (255)
+    valid_mask = (~np.isnan(hakkespett_flat)) & (naturskog_flat != 255)
+    naturskog_valid = naturskog_flat[valid_mask]
+    hakkespett_valid = hakkespett_flat[valid_mask]
+
+    # 3. Create dataframe (public variable)
+    korrelasjon_data = pl.DataFrame(
+        {
+            "Naturskog_klasse": naturskog_valid.astype(int),
+            "Hakkespett_rikhet": hakkespett_valid,
+        }
+    )
+
+    # 4. Calculate summary statistics per class
+    _statistikk_per_klasse = (
+        korrelasjon_data.group_by("Naturskog_klasse")
+        .agg(
+            [
+                pl.col("Hakkespett_rikhet").mean().alias("Gjennomsnitt"),
+                pl.col("Hakkespett_rikhet").median().alias("Median"),
+                pl.col("Hakkespett_rikhet").std().alias("Std_avvik"),
+                pl.col("Hakkespett_rikhet").min().alias("Min"),
+                pl.col("Hakkespett_rikhet").max().alias("Maks"),
+                pl.col("Hakkespett_rikhet").count().alias("Antall_piksler"),
+            ]
+        )
+        .sort("Naturskog_klasse")
+    )
+
+    _statistikk_per_klasse
+    return (korrelasjon_data,)
+
+
+@app.cell
+def _(alt, korrelasjon_data, mo):
+    # Create boxplot using raw data
+    _boxplot = (
+        alt.Chart(korrelasjon_data)
+        .mark_boxplot()
+        .encode(
+            x=alt.X("Naturskog_klasse:O", title="Naturskogsnærhet klasse"),
+            y=alt.Y("Hakkespett_rikhet:Q", title="Hakkespett-rikhet (0-1)"),
+            color=alt.Color("Naturskog_klasse:O", legend=None),
+            tooltip=[
+                alt.Tooltip("Naturskog_klasse:O", title="Klasse"),
+                alt.Tooltip("Hakkespett_rikhet:Q", title="Rikhet", format=".3f"),
+            ],
+        )
+        .properties(
+            title="Hakkespett-rikhet fordeling per naturskogsnærhet klasse",
+            width=600,
+            height=400,
+        )
+    )
+
+    mo.ui.altair_chart(_boxplot)
+    return
+
+
+@app.cell
+def _():
     return
 
 
