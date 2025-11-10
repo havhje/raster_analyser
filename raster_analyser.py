@@ -34,6 +34,24 @@ def _(rioxarray):
 
 
 @app.cell
+def _(naturskog):
+    # Mask NoData values before plotting
+    naturskog_masked = naturskog.where(naturskog != 255)
+
+    naturskog_masked.hvplot.image(
+        x="x",
+        y="y",
+        rasterize=True,
+        cmap="tab10",
+        clim=(1, 7),
+        aspect="equal",
+        frame_height=800,
+        title="Naturskog",
+    )
+    return
+
+
+@app.cell
 def _():
     from localtileserver import TileClient, get_folium_tile_layer
     import folium
