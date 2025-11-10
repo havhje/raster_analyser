@@ -34,6 +34,39 @@ def _(rioxarray):
 
 
 @app.cell
+def _():
+    from localtileserver import TileClient, get_folium_tile_layer
+    import folium
+
+    # Create tile client for naturskog raster
+    naturskog_client = TileClient(
+        "/Users/havardhjermstad-sollerud/Downloads/naturskog_v1_naturskognaerhet.tif"
+    )
+
+    # Create folium map centered on the data
+    naturskog_folium_map = folium.Map(
+        location=naturskog_client.center(),
+        zoom_start=naturskog_client.default_zoom,
+        tiles="OpenStreetMap",
+    )
+
+    # Add tile layer with categorical colormap
+    naturskog_folium_layer = get_folium_tile_layer(
+        naturskog_client,
+        colormap="tab10",  # Categorical colormap with distinct colors
+        vmin=1,
+        vmax=7,  # Only show classes 0-7, exclude NoData (255)
+        opacity=0.8,
+        attr="Naturskog",
+    )
+
+    naturskog_folium_map.add_child(naturskog_folium_layer)
+
+    naturskog_folium_map
+    return
+
+
+@app.cell
 def _(naturskog):
     # Check if NoData is set
     naturskog.rio.nodata
@@ -80,10 +113,10 @@ def _(alt, klasse_distribusjon, mo):
     return
 
 
-@app.cell
+@app.cell(column=1)
 def _(mo):
     mo.md(r"""
-    ### Hakkespetter
+    ### Valgt kartlag
     """)
     return
 
@@ -91,7 +124,7 @@ def _(mo):
 @app.cell
 def _(rioxarray):
     hakkespett = rioxarray.open_rasterio(
-        "/Users/havardhjermstad-sollerud/Downloads/alle-hakkespett-rikhet_norge_2025_32633.tiff"
+        "/Users/havardhjermstad-sollerud/Downloads/trua-lav-hotspots_norge_2025_32633.tiff"
     )
     hakkespett
     return (hakkespett,)
@@ -140,7 +173,7 @@ def _(alt, hakkespett_distribusjon, mo):
     return
 
 
-@app.cell(column=1)
+@app.cell(column=2)
 def _(mo):
     mo.md(r"""
     ### Resampling
@@ -228,53 +261,43 @@ def _(hakkespett_aligned, naturskog_500m, np, pl):
     )
 
     # 4. Calculate summary statistics per class
-    _statistikk_per_klasse = (
+    statistikk_per_klasse = (
         korrelasjon_data.group_by("Naturskog_klasse")
         .agg(
             [
                 pl.col("Hakkespett_rikhet").mean().alias("Gjennomsnitt"),
-                pl.col("Hakkespett_rikhet").median().alias("Median"),
                 pl.col("Hakkespett_rikhet").std().alias("Std_avvik"),
-                pl.col("Hakkespett_rikhet").min().alias("Min"),
-                pl.col("Hakkespett_rikhet").max().alias("Maks"),
                 pl.col("Hakkespett_rikhet").count().alias("Antall_piksler"),
             ]
         )
         .sort("Naturskog_klasse")
     )
 
-    _statistikk_per_klasse
+    statistikk_per_klasse
     return (korrelasjon_data,)
 
 
 @app.cell
-def _(alt, korrelasjon_data, mo):
-    # Create boxplot using raw data
-    _boxplot = (
-        alt.Chart(korrelasjon_data)
-        .mark_boxplot()
-        .encode(
-            x=alt.X("Naturskog_klasse:O", title="Naturskogsnærhet klasse"),
-            y=alt.Y("Hakkespett_rikhet:Q", title="Hakkespett-rikhet (0-1)"),
-            color=alt.Color("Naturskog_klasse:O", legend=None),
-            tooltip=[
-                alt.Tooltip("Naturskog_klasse:O", title="Klasse"),
-                alt.Tooltip("Hakkespett_rikhet:Q", title="Rikhet", format=".3f"),
-            ],
+def _(korrelasjon_data, pl):
+    statistikk_to_delt = (
+        korrelasjon_data.with_columns(
+            pl.when(pl.col("Naturskog_klasse") == 1)
+            .then(pl.lit("Klasse 1"))
+            .otherwise(pl.lit("Klasse 2-7"))
+            .alias("Klasse_gruppe")
         )
-        .properties(
-            title="Hakkespett-rikhet fordeling per naturskogsnærhet klasse",
-            width=600,
-            height=400,
+        .group_by("Klasse_gruppe")
+        .agg(
+            [
+                pl.col("Hakkespett_rikhet").mean().alias("Gjennomsnitt"),
+                pl.col("Hakkespett_rikhet").std().alias("Std_avvik"),
+                pl.col("Hakkespett_rikhet").count().alias("Antall_piksler"),
+            ]
         )
+        .sort("Klasse_gruppe")
     )
 
-    mo.ui.altair_chart(_boxplot)
-    return
-
-
-@app.cell
-def _():
+    statistikk_to_delt
     return
 
 
