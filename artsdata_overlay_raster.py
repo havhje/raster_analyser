@@ -372,9 +372,6 @@ def _(density_data, grouped_data):
 
     plt.tight_layout(rect=[0.1, 0.05, 1, 0.99])
 
-    # Save figure in high DPI
-    plt.savefig("rodlistearter_naturskog.png", dpi=300, bbox_inches="tight")
-
     plt.gca()
     return plt, sns
 
@@ -432,7 +429,6 @@ def _(density_data, np, plt, sns):
                  wrap=True, verticalalignment='bottom')
 
     plt.tight_layout(rect=[0.05, 0.05, 1, 0.95])
-    plt.savefig('rodlistearter_naturskog_fold_change.png', dpi=300, bbox_inches='tight')
 
     plt.gca()
     return
