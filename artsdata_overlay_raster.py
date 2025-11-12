@@ -99,7 +99,7 @@ def _(mo):
 @app.cell
 def _(pl):
     arts_obs = pl.read_parquet(
-        "C:/Users/havh/OneDrive - Multiconsult/Dokumenter/Oppdrag/FoUI SVV/alle_sopp_og_lav.parquet"
+        "C:/Users/havh/OneDrive - Multiconsult/Dokumenter/Oppdrag/FoUI SVV/sopp_lav_plantea_ink_moser.parquet"
     )
     return (arts_obs,)
 
@@ -209,29 +209,34 @@ def _(mo):
 
 @app.cell
 def _(naturskog, np, pl):
-    naturskog_verdi = naturskog.values.flatten()
-
-    naturskog_verdi_clean = naturskog_verdi
-
-    unike_klasser, counts = np.unique(naturskog_verdi_clean, return_counts=True)
-
-    klasse_distribusjon = pl.DataFrame(
-        {"Klasse": unike_klasser, "Pixel_Count": counts}
-    )
+    unike_klasser, counts = np.unique(naturskog.values.flatten(), return_counts=True)
+    klasse_distribusjon = pl.DataFrame({"Klasse": unike_klasser, "Pixel_Count": counts})
 
     klasse_distribusjon
     return (klasse_distribusjon,)
 
 
 @app.cell
-def _(klasse_distribusjon, pl):
+def _():
+    mapping = {
+        255: "Ikke skog",
+        1: "Skog",
+        2: "2-N",
+        3: "3-N",
+        4: "4-N",
+        5: "5-N",
+        6: "6-N",
+        7: "7-N",
+    }
+    return (mapping,)
+
+
+@app.cell
+def _(klasse_distribusjon, mapping, pl):
     # Rename class 255 to 0 and group to combine pixel counts
     klasse_dist_renamed = (
         klasse_distribusjon.with_columns(
-            pl.when(pl.col("Klasse") == 255)
-            .then(pl.lit(0))
-            .otherwise(pl.col("Klasse"))
-            .alias("Klasse")
+            pl.col("Klasse").replace_strict(mapping, default=pl.col("Klasse"))
         )
         .group_by("Klasse")
         .agg(pl.col("Pixel_Count").sum())
@@ -242,22 +247,29 @@ def _(klasse_distribusjon, pl):
 
 
 @app.cell
-def _(arter_riktig_df, pl):
+def _(arter_riktig_df, mapping, pl):
     # Group by naturskog_value and Kategori 2021, count observations
-    grouped_data = (
+    grouped_data_med_ikke_skog = (
         arter_riktig_df.filter(~pl.col("Kategori 2021").is_in(["DD", "NT°"]))
         .group_by(["naturskog_value", "Kategori 2021"])
         .agg(pl.len().alias("count"))
         .sort(["naturskog_value", "Kategori 2021"])
         .with_columns(
-            pl.when(pl.col("naturskog_value") == 255)
-            .then(pl.lit(0))
-            .otherwise(pl.col("naturskog_value"))
-            .alias("naturskog_value")
+            pl.col("naturskog_value").replace_strict(
+                mapping, default=pl.col("naturskog_value")
+            )
         )
     )
+    grouped_data_med_ikke_skog
+    return (grouped_data_med_ikke_skog,)
 
-    grouped_data
+
+@app.cell
+def _(grouped_data_med_ikke_skog, pl):
+    ## Tar bort ikke skog
+    grouped_data = grouped_data_med_ikke_skog.filter(
+        pl.col("naturskog_value") != "Ikke skog"
+    )
     return (grouped_data,)
 
 
@@ -279,7 +291,7 @@ def _(grouped_data, klasse_dist_renamed, pl):
     return (density_data,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(density_data, grouped_data):
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -292,7 +304,10 @@ def _(density_data, grouped_data):
         "NT",
         "DD",
         "RE",
-    ]  # Adjust based on what categories you have
+    ]
+
+    # Define the desired order for naturskog_value (x-axis)
+    naturskog_order = ["Skog", "2-N", "3-N", "4-N", "5-N", "6-N", "7-N"]
 
     # Prepare count matrix with specific order
     count_matrix = (
@@ -301,9 +316,10 @@ def _(density_data, grouped_data):
         .fillna(0)
     )
 
-    # Reindex to the desired order (only keeps categories that exist)
+    # Reindex to the desired order (rows and columns)
     count_matrix = count_matrix.reindex(
-        [cat for cat in redlist_order if cat in count_matrix.index]
+        index=[cat for cat in redlist_order if cat in count_matrix.index],
+        columns=[col for col in naturskog_order if col in count_matrix.columns],
     )
 
     # Prepare density matrix with same order
@@ -318,11 +334,12 @@ def _(density_data, grouped_data):
     )
 
     density_matrix = density_matrix.reindex(
-        [cat for cat in redlist_order if cat in density_matrix.index]
+        index=[cat for cat in redlist_order if cat in density_matrix.index],
+        columns=[col for col in naturskog_order if col in density_matrix.columns],
     )
 
     # Create figure with two subplots stacked vertically
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
+    _fig, (_ax1, _ax2) = plt.subplots(2, 1, figsize=(10, 12))
 
     # Top heatmap: Absolute counts
     sns.heatmap(
@@ -333,11 +350,11 @@ def _(density_data, grouped_data):
         linewidths=0.5,
         linecolor="white",
         cbar_kws={"label": "Antall observasjoner"},
-        ax=ax1,
+        ax=_ax1,
     )
-    ax1.set_title("Antall observasjoner (20 448)", fontsize=13, pad=15)
-    ax1.set_xlabel("Naturskogsnærhet", fontsize=11)
-    ax1.set_ylabel("Rødlistekategori", fontsize=11)
+    _ax1.set_title("Antall observasjoner (75 113)", fontsize=13, pad=15)
+    _ax1.set_xlabel("Naturskogsnærhet", fontsize=11)
+    _ax1.set_ylabel("Rødlistekategori", fontsize=11)
 
     # Bottom heatmap: Normalized density
     sns.heatmap(
@@ -348,21 +365,21 @@ def _(density_data, grouped_data):
         linewidths=0.5,
         linecolor="white",
         cbar_kws={"label": "Observasjoner per km²"},
-        ax=ax2,
+        ax=_ax2,
     )
-    ax2.set_title("Tetthet av observasjoner pr. km² ", fontsize=13, pad=15)
-    ax2.set_xlabel("Naturskogsnærhet", fontsize=11)
-    ax2.set_ylabel("Rødlistekategori", fontsize=11)
+    _ax2.set_title("Tetthet av observasjoner pr. km² ", fontsize=13, pad=15)
+    _ax2.set_xlabel("Naturskogsnærhet", fontsize=11)
+    _ax2.set_ylabel("Rødlistekategori", fontsize=11)
 
     plt.suptitle(
-        "Rødlista sopp og lav etter naturskogsnærhet for øvrig natur i skog\n (0=Ikke naturskog, 1-7=Økende naturskogsnærhet)",
+        "Rødlista sopp, lav, moser og karplanter for øvrig natur i skog\n fordelt på vanlig skog og naturskogsklasser (N2-7) ",
         fontsize=14,
-        y=0.995,
+        y=1,
     )
-    fig.text(
+    _fig.text(
         0.1,
         0.01,
-        "*Analysen omfatter alle artsobservasjoner registrert i skog i hele Norge fra 2010 hvor observasjonen er utenfor kartlagte MI-typer, men innenfor dekningsområdet til MI-kartleggingen. Skog som ikke er MI-kartlagte områder er eksludert fra analysen. Totalt antall arter er 20 448.",
+        "*Analysen omfatter alle artsobservasjoner registrert i skog iht. grunnkart for arealregnskap i hele Norge fra 2010 hvor\n observasjonen er utenfor kartlagte MI-typer, men innenfor dekningsområdet til MI-kartleggingen.",
         ha="left",
         fontsize=10,
         color="black",
@@ -370,63 +387,80 @@ def _(density_data, grouped_data):
         verticalalignment="bottom",
     )
 
-    plt.tight_layout(rect=[0.1, 0.05, 1, 0.99])
+    plt.tight_layout(rect=[0.1, 0.05, 1, 0.99], h_pad=3.0)
 
     plt.gca()
     return plt, sns
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(density_data, np, plt, sns):
     # Prepare density matrix
-    _dens_mat = density_data.to_pandas().pivot(
-        index='Kategori 2021',
-        columns='naturskog_value',
-        values='density_per_km2'
-    ).fillna(0)
+    _dens_mat = (
+        density_data.to_pandas()
+        .pivot(
+            index="Kategori 2021",
+            columns="naturskog_value",
+            values="density_per_km2",
+        )
+        .fillna(0)
+    )
 
-    _rl_order = ['CR', 'EN', 'VU', 'NT', 'DD', 'RE']
-    _dens_mat = _dens_mat.reindex([cat for cat in _rl_order if cat in _dens_mat.index])
+    _rl_order = ["CR", "EN", "VU", "NT", "DD", "RE"]
+    _dens_mat = _dens_mat.reindex(
+        [cat for cat in _rl_order if cat in _dens_mat.index]
+    )
 
-    # Calculate fold change (ratio) from baseline
+    # Calculate fold change (ratio) from baseline (Skog)
     _fold_change = _dens_mat.copy()
     for col in _fold_change.columns:
-        if col != 0:
+        if col != "Skog":
             # Add small constant to avoid division by zero
-            _fold_change[col] = (_dens_mat[col] + 1e-10) / (_dens_mat[0] + 1e-10)
+            _fold_change[col] = (_dens_mat[col] + 1e-10) / (
+                _dens_mat["Skog"] + 1e-10
+            )
 
-    _fold_change = _fold_change.drop(columns=[0])
+    _fold_change = _fold_change.drop(columns=["Skog"])
 
     # Create custom annotations showing fold change
     _annot_fc = np.empty(_fold_change.shape, dtype=object)
     for i in range(_fold_change.shape[0]):
         for j in range(_fold_change.shape[1]):
             val = _fold_change.iloc[i, j]
-            _annot_fc[i, j] = f'{val:.2f}x'
+            _annot_fc[i, j] = f"{val:.2f}x"
 
     _fig_fc, _ax_fc = plt.subplots(1, 1, figsize=(10, 6))
 
     sns.heatmap(
         _fold_change,
         annot=_annot_fc,
-        fmt='',
-        cmap='RdYlGn',
+        fmt="",
+        cmap="RdYlGn",
         center=1,  # Center at 1x (no change)
         linewidths=0.5,
-        linecolor='white',
-        cbar_kws={'label': 'Fold endring (ratio)'},
-        ax=_ax_fc
+        linecolor="white",
+        cbar_kws={"label": "Fold endring (ratio)"},
+        ax=_ax_fc,
     )
 
-    _ax_fc.set_title('"Fold change" i observasjonstetthet sammenlignet med ikke-naturskog for\nrødlista sopp og lav', 
-                     fontsize=13, pad=15)
-    _ax_fc.set_xlabel('Naturskogsnærhet', fontsize=11)
-    _ax_fc.set_ylabel('Rødlistekategori', fontsize=11)
+    _ax_fc.set_title(
+        '"Fold change" i observasjonstetthet sammenlignet med skog uten naturskogsnærhet for\nrødlista sopp og lav',
+        fontsize=13,
+        pad=15,
+    )
+    _ax_fc.set_xlabel("Naturskogsnærhet", fontsize=11)
+    _ax_fc.set_ylabel("Rødlistekategori", fontsize=11)
 
-    _fig_fc.text(0.1, 0.01, 
-                 '*Verdier > 1.0 indikerer høyere tetthet enn i områder uten naturskog. 2.0x = dobbelt så høy tetthet.',
-                 ha='left', fontsize=10, color='black',
-                 wrap=True, verticalalignment='bottom')
+    _fig_fc.text(
+        0.1,
+        0.01,
+        "*Verdier > 1.0 indikerer høyere tetthet enn i skog uten naturskogsnærhet. 2.0x = dobbelt så høy tetthet.",
+        ha="left",
+        fontsize=10,
+        color="black",
+        wrap=True,
+        verticalalignment="bottom",
+    )
 
     plt.tight_layout(rect=[0.05, 0.05, 1, 0.95])
 
@@ -435,6 +469,47 @@ def _(density_data, np, plt, sns):
 
 
 @app.cell(column=3)
+def _(mo):
+    mo.md(r"""
+    ###Forskjell mellom øvrig natur og MI-typer
+    """)
+    return
+
+
+@app.cell
+def _(arts_obs_for_duckdb, mo, omr_for_duckdb):
+    MI_arter_df = mo.sql(
+        f"""
+        WITH points_in_omr AS (
+            SELECT DISTINCT a.*
+            FROM arts_obs_for_duckdb a, omr_for_duckdb o
+            WHERE ST_Within(
+                ST_GeomFromText(a.geometry_wkt), 
+                ST_GeomFromText(o.geometry_wkt)
+            )
+        )
+        SELECT * FROM points_in_omr;
+        """
+    )
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell(column=4)
 def _():
     return
 
