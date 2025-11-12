@@ -208,91 +208,15 @@ def _(mo):
 
 
 @app.cell
-def _(naturskog, np, pl):
-    unike_klasser, counts = np.unique(naturskog.values.flatten(), return_counts=True)
-    klasse_distribusjon = pl.DataFrame({"Klasse": unike_klasser, "Pixel_Count": counts})
-
-    klasse_distribusjon
-    return (klasse_distribusjon,)
-
-
-@app.cell
-def _():
-    mapping = {
-        255: "Ikke skog",
-        1: "Skog",
-        2: "2-N",
-        3: "3-N",
-        4: "4-N",
-        5: "5-N",
-        6: "6-N",
-        7: "7-N",
-    }
-    return (mapping,)
+def _(arter_alle_geo_df, mo):
+    # Brukke denne til å filtrer i figuren
+    arter_riktig_df = mo.ui.table(arter_alle_geo_df, selection="multi")
+    arter_riktig_df
+    return (arter_riktig_df,)
 
 
-@app.cell
-def _(klasse_distribusjon, mapping, pl):
-    # Rename class 255 to 0 and group to combine pixel counts
-    klasse_dist_renamed = (
-        klasse_distribusjon.with_columns(
-            pl.col("Klasse").replace_strict(mapping, default=pl.col("Klasse"))
-        )
-        .group_by("Klasse")
-        .agg(pl.col("Pixel_Count").sum())
-    )
-
-    klasse_dist_renamed
-    return (klasse_dist_renamed,)
-
-
-@app.cell
-def _(arter_riktig_df, mapping, pl):
-    # Group by naturskog_value and Kategori 2021, count observations
-    grouped_data_med_ikke_skog = (
-        arter_riktig_df.filter(~pl.col("Kategori 2021").is_in(["DD", "NT°"]))
-        .group_by(["naturskog_value", "Kategori 2021"])
-        .agg(pl.len().alias("count"))
-        .sort(["naturskog_value", "Kategori 2021"])
-        .with_columns(
-            pl.col("naturskog_value").replace_strict(
-                mapping, default=pl.col("naturskog_value")
-            )
-        )
-    )
-    grouped_data_med_ikke_skog
-    return (grouped_data_med_ikke_skog,)
-
-
-@app.cell
-def _(grouped_data_med_ikke_skog, pl):
-    ## Tar bort ikke skog
-    grouped_data = grouped_data_med_ikke_skog.filter(
-        pl.col("naturskog_value") != "Ikke skog"
-    )
-    return (grouped_data,)
-
-
-@app.cell
-def _(grouped_data, klasse_dist_renamed, pl):
-    # Join with pixel counts and calculate density (observations per km²)
-    # 1 pixel = 16m x 16m = 256 m²
-    # 1 km² = 1,000,000 m² = 3906.25 pixels
-    density_data = grouped_data.join(
-        klasse_dist_renamed,
-        left_on="naturskog_value",
-        right_on="Klasse",
-        how="left",
-    ).with_columns(
-        (pl.col("count") / pl.col("Pixel_Count") * (1_000_000 / (16 * 16))).alias(
-            "density_per_km2"
-        )
-    )
-    return (density_data,)
-
-
-@app.cell
-def _(density_data, grouped_data):
+@app.cell(hide_code=True)
+def _(density_data, filtered_data, grouped_data):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -352,7 +276,9 @@ def _(density_data, grouped_data):
         cbar_kws={"label": "Antall observasjoner"},
         ax=_ax1,
     )
-    _ax1.set_title("Antall observasjoner (75 113)", fontsize=13, pad=15)
+    _ax1.set_title(
+        f"Antall observasjoner ({len(filtered_data)})", fontsize=13, pad=15
+    )
     _ax1.set_xlabel("Naturskogsnærhet", fontsize=11)
     _ax1.set_ylabel("Rødlistekategori", fontsize=11)
 
@@ -393,7 +319,7 @@ def _(density_data, grouped_data):
     return plt, sns
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(density_data, np, plt, sns):
     # Prepare density matrix
     _dens_mat = (
@@ -439,12 +365,12 @@ def _(density_data, np, plt, sns):
         center=1,  # Center at 1x (no change)
         linewidths=0.5,
         linecolor="white",
-        cbar_kws={"label": "Fold endring (ratio)"},
+        cbar_kws={"label": "Relativ endring (ratio)"},
         ax=_ax_fc,
     )
 
     _ax_fc.set_title(
-        '"Fold change" i observasjonstetthet sammenlignet med skog uten naturskogsnærhet for\nrødlista sopp og lav',
+        "Relativ endring i observasjonstetthet mellom naturskogsklasser (N2-7) og vanlig skog",
         fontsize=13,
         pad=15,
     )
@@ -454,7 +380,7 @@ def _(density_data, np, plt, sns):
     _fig_fc.text(
         0.1,
         0.01,
-        "*Verdier > 1.0 indikerer høyere tetthet enn i skog uten naturskogsnærhet. 2.0x = dobbelt så høy tetthet.",
+        "*Verdier > 1.0 indikerer høyere tetthet enn i skog uten naturskogsnærhet og motsatt",
         ha="left",
         fontsize=10,
         color="black",
@@ -466,6 +392,100 @@ def _(density_data, np, plt, sns):
 
     plt.gca()
     return
+
+
+@app.cell
+def _(naturskog, np, pl):
+    unike_klasser, counts = np.unique(
+        naturskog.values.flatten(), return_counts=True
+    )
+    klasse_distribusjon = pl.DataFrame(
+        {"Klasse": unike_klasser, "Pixel_Count": counts}
+    )
+
+    klasse_distribusjon
+    return (klasse_distribusjon,)
+
+
+@app.cell
+def _():
+    mapping = {
+        255: "Ikke skog",
+        1: "Skog",
+        2: "2-N",
+        3: "3-N",
+        4: "4-N",
+        5: "5-N",
+        6: "6-N",
+        7: "7-N",
+    }
+    return (mapping,)
+
+
+@app.cell
+def _(klasse_distribusjon, mapping, pl):
+    # Rename class 255 to 0 and group to combine pixel counts
+    klasse_dist_renamed = (
+        klasse_distribusjon.with_columns(
+            pl.col("Klasse").replace_strict(mapping, default=pl.col("Klasse"))
+        )
+        .group_by("Klasse")
+        .agg(pl.col("Pixel_Count").sum())
+    )
+
+    klasse_dist_renamed
+    return (klasse_dist_renamed,)
+
+
+@app.cell
+def _(arter_alle_geo_df, arter_riktig_df, mapping, pl):
+    # Group by naturskog_value and Kategori 2021, count observations
+    filtered_data = (
+        arter_riktig_df.value
+        if len(arter_riktig_df.value) > 0
+        else arter_alle_geo_df
+    )
+
+    grouped_data_med_ikke_skog = (
+        filtered_data.filter(~pl.col("Kategori 2021").is_in(["DD", "NT°"]))
+        .group_by(["naturskog_value", "Kategori 2021"])
+        .agg(pl.len().alias("count"))
+        .sort(["naturskog_value", "Kategori 2021"])
+        .with_columns(
+            pl.col("naturskog_value").replace_strict(
+                mapping, default=pl.col("naturskog_value")
+            )
+        )
+    )
+    grouped_data_med_ikke_skog
+    return filtered_data, grouped_data_med_ikke_skog
+
+
+@app.cell
+def _(grouped_data_med_ikke_skog, pl):
+    ## Tar bort ikke skog
+    grouped_data = grouped_data_med_ikke_skog.filter(
+        pl.col("naturskog_value") != "Ikke skog"
+    )
+    return (grouped_data,)
+
+
+@app.cell
+def _(grouped_data, klasse_dist_renamed, pl):
+    # Join with pixel counts and calculate density (observations per km²)
+    # 1 pixel = 16m x 16m = 256 m²
+    # 1 km² = 1,000,000 m² = 3906.25 pixels
+    density_data = grouped_data.join(
+        klasse_dist_renamed,
+        left_on="naturskog_value",
+        right_on="Klasse",
+        how="left",
+    ).with_columns(
+        (pl.col("count") / pl.col("Pixel_Count") * (1_000_000 / (16 * 16))).alias(
+            "density_per_km2"
+        )
+    )
+    return (density_data,)
 
 
 @app.cell(column=3)
