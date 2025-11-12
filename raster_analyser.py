@@ -52,39 +52,6 @@ def _(naturskog):
 
 
 @app.cell
-def _():
-    from localtileserver import TileClient, get_folium_tile_layer
-    import folium
-
-    # Create tile client for naturskog raster
-    naturskog_client = TileClient(
-        "/Users/havardhjermstad-sollerud/Downloads/naturskog_v1_naturskognaerhet.tif"
-    )
-
-    # Create folium map centered on the data
-    naturskog_folium_map = folium.Map(
-        location=naturskog_client.center(),
-        zoom_start=naturskog_client.default_zoom,
-        tiles="OpenStreetMap",
-    )
-
-    # Add tile layer with categorical colormap
-    naturskog_folium_layer = get_folium_tile_layer(
-        naturskog_client,
-        colormap="tab10",  # Categorical colormap with distinct colors
-        vmin=1,
-        vmax=7,  # Only show classes 0-7, exclude NoData (255)
-        opacity=0.8,
-        attr="Naturskog",
-    )
-
-    naturskog_folium_map.add_child(naturskog_folium_layer)
-
-    naturskog_folium_map
-    return
-
-
-@app.cell
 def _(naturskog):
     # Check if NoData is set
     naturskog.rio.nodata
