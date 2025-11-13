@@ -88,6 +88,14 @@ def _():
     return
 
 
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ###R-arter pr. hogstår
+    """)
+    return
+
+
 @app.cell(column=1)
 def _(mo):
     mo.md(r"""
@@ -109,26 +117,40 @@ def _(arts_obs, pl):
     import rasterio
     from pyproj import Transformer
 
-    # Open raster with rasterio
-    with rasterio.open(
-        "C:/Users/havh/Downloads/naturskog_v1_naturskognaerhet.tif"
-    ) as src:
-        # Create transformer
-        transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+    # Define raster paths
+    raster_paths = {
+        "naturskog_value": "C:/Users/havh/Downloads/naturskog_v1_naturskognaerhet.tif",
+        "hogst_flybilde": "C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_flybilde.tif",
+        "hogst_satelitt": "C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_satelitt.tif",
+    }
 
-        # Transform coordinates
-        x_coords, y_coords = transformer.transform(
-            arts_obs["decimallongitude"].to_numpy(),
-            arts_obs["decimallatitude"].to_numpy(),
-        )
+    # Dictionary to store values from each raster
+    raster_values = {}
 
-        # Sample raster at points - returns generator
-        coords = list(zip(x_coords, y_coords))
-        values = [val[0] for val in src.sample(coords)]
+    # Sample each raster
+    for column_name, raster_path in raster_paths.items():
+        with rasterio.open(raster_path) as src:
+            # Create transformer for this raster's CRS
+            transformer = Transformer.from_crs(
+                "EPSG:4326", src.crs, always_xy=True
+            )
 
-    # Add to dataframe
+            # Transform coordinates
+            x_coords, y_coords = transformer.transform(
+                arts_obs["decimallongitude"].to_numpy(),
+                arts_obs["decimallatitude"].to_numpy(),
+            )
+
+            # Sample raster at points
+            coords = list(zip(x_coords, y_coords))
+            values = [val[0] for val in src.sample(coords)]
+
+            # Store values
+            raster_values[column_name] = values
+
+    # Add all columns to dataframe
     arts_obs_with_values = arts_obs.with_columns(
-        pl.Series("naturskog_value", values)
+        [pl.Series(name, values) for name, values in raster_values.items()]
     )
 
     arts_obs_with_values
@@ -491,41 +513,18 @@ def _(grouped_data, klasse_dist_renamed, pl):
 @app.cell(column=3)
 def _(mo):
     mo.md(r"""
-    ###Forskjell mellom øvrig natur og MI-typer
+    ### Analyse av hogstår sett opp mot rødlistearter
     """)
     return
 
 
 @app.cell
-def _(arts_obs_for_duckdb, mo, omr_for_duckdb):
-    MI_arter_df = mo.sql(
-        f"""
-        WITH points_in_omr AS (
-            SELECT DISTINCT a.*
-            FROM arts_obs_for_duckdb a, omr_for_duckdb o
-            WHERE ST_Within(
-                ST_GeomFromText(a.geometry_wkt), 
-                ST_GeomFromText(o.geometry_wkt)
-            )
-        )
-        SELECT * FROM points_in_omr;
-        """
+def _(arts_obs_with_values, pl):
+    # Bruk arts_obs_with_values
+    arter_med_hogsttidspunkt = arts_obs_with_values.filter(
+        pl.col("hogst_satelitt") != 0
     )
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _():
+    arter_med_hogsttidspunkt
     return
 
 
