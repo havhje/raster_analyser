@@ -88,14 +88,6 @@ def _():
     return
 
 
-@app.cell
-def _(mo):
-    mo.md(r"""
-    ###R-arter pr. hogstår
-    """)
-    return
-
-
 @app.cell(column=1)
 def _(mo):
     mo.md(r"""
@@ -109,36 +101,38 @@ def _(pl):
     arts_obs = pl.read_parquet(
         "C:/Users/havh/OneDrive - Multiconsult/Dokumenter/Oppdrag/FoUI SVV/sopp_lav_plantea_ink_moser.parquet"
     )
-    return (arts_obs,)
+    return
 
 
-@app.cell
-def _(arts_obs, pl):
+app._unparsable_cell(
+    r"""
     import rasterio
     from pyproj import Transformer
 
     # Define raster paths
     raster_paths = {
-        "naturskog_value": "C:/Users/havh/Downloads/naturskog_v1_naturskognaerhet.tif",
-        "hogst_flybilde": "C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_flybilde.tif",
-        "hogst_satelitt": "C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_satelitt.tif",
+        \"naturskog_value\": \"C:/Users/havh/Downloads/naturskog_v1_naturskognaerhet.tif\",
+        \"hogst_flybilde\": \"C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_flybilde.tif\",
+        \"hogst_satelitt\": \"C:/Users/havh/Downloads/naturskog_v1_støttelag_hogst_satelitt.tif\",
     }
 
-    # Dictionary to store values from each raster
-    raster_values = {}
+    # Dictionary to store values
+        raster_values = {}
 
-    # Sample each raster
-    for column_name, raster_path in raster_paths.items():
-        with rasterio.open(raster_path) as src:
-            # Create transformer for this raster's CRS
-            transformer = Transformer.from_crs(
-                "EPSG:4326", src.crs, always_xy=True
-            )
+        for column_name, raster_path in raster_paths.items():
+            with rasterio.open(raster_path) as src:
+                # PRINT HERE - Check every single map
+                print(f\"Processing {column_name}: CRS is {src.crs}\")
+            
+                # Create transformer for this SPECIFIC raster's CRS
+                transformer = Transformer.from_crs(
+                    \"EPSG:4326\", src.crs, always_xy=True
+                )
 
             # Transform coordinates
             x_coords, y_coords = transformer.transform(
-                arts_obs["decimallongitude"].to_numpy(),
-                arts_obs["decimallatitude"].to_numpy(),
+                arts_obs[\"decimallongitude\"].to_numpy(),
+                arts_obs[\"decimallatitude\"].to_numpy(),
             )
 
             # Sample raster at points
@@ -154,7 +148,9 @@ def _(arts_obs, pl):
     )
 
     arts_obs_with_values
-    return (arts_obs_with_values,)
+    """,
+    name="_"
+)
 
 
 @app.cell
@@ -172,67 +168,177 @@ def _(arts_obs_with_values, gpd):
 
 
 @app.cell
-def _(arts_obs_gdf, naturtype_dekning_projected, naturtype_omr_projected):
-    # Convert geometry columns to WKT format for DuckDB
-    arts_obs_for_duckdb = arts_obs_gdf.copy()
-    arts_obs_for_duckdb["geometry_wkt"] = arts_obs_gdf.geometry.to_wkt()
-    arts_obs_for_duckdb = arts_obs_for_duckdb.drop(columns=["geometry"])
-
-    dekning_for_duckdb = naturtype_dekning_projected.copy()
-    dekning_for_duckdb["geometry_wkt"] = (
-        naturtype_dekning_projected.geometry.to_wkt()
-    )
-    dekning_for_duckdb = dekning_for_duckdb.drop(columns=["geometry"])
-
-    omr_for_duckdb = naturtype_omr_projected.copy()
-    omr_for_duckdb["geometry_wkt"] = naturtype_omr_projected.geometry.to_wkt()
-    omr_for_duckdb = omr_for_duckdb.drop(columns=["geometry"])
-    return arts_obs_for_duckdb, dekning_for_duckdb, omr_for_duckdb
-
-
-@app.cell
 def _(arts_obs_for_duckdb, dekning_for_duckdb, mo, omr_for_duckdb):
-    arter_riktig_df = mo.sql(
+    alle_verdier_arter_df = mo.sql(
         f"""
         INSTALL spatial;
         LOAD spatial;
 
-        WITH points_in_dekning AS (
-            SELECT DISTINCT a.*
-            FROM arts_obs_for_duckdb a, dekning_for_duckdb d
-            WHERE ST_Within(
-                ST_GeomFromText(a.geometry_wkt), 
-                ST_GeomFromText(d.geometry_wkt)
-            )
-        ),
-        points_in_omr AS (
-            SELECT DISTINCT a.*
+        WITH points_in_omr AS (
+            SELECT DISTINCT a.decimallongitude, a.decimallatitude
             FROM arts_obs_for_duckdb a, omr_for_duckdb o
             WHERE ST_Within(
                 ST_GeomFromText(a.geometry_wkt), 
                 ST_GeomFromText(o.geometry_wkt)
             )
+        ),
+        points_in_dekning AS (
+            SELECT DISTINCT a.decimallongitude, a.decimallatitude
+            FROM arts_obs_for_duckdb a, dekning_for_duckdb d
+            WHERE ST_Within(
+                ST_GeomFromText(a.geometry_wkt), 
+                ST_GeomFromText(d.geometry_wkt)
+            )
         )
-        SELECT * FROM points_in_dekning
-        EXCEPT
-        SELECT * FROM points_in_omr;
+        SELECT 
+            a.*,
+            o.decimallongitude IS NOT NULL AS in_omr,
+            d.decimallongitude IS NOT NULL AS in_dekning,
+            (o.decimallongitude IS NULL AND d.decimallongitude IS NOT NULL) AS outside_omr_inside_dekning
+        FROM arts_obs_for_duckdb a
+        LEFT JOIN points_in_omr o 
+            ON a.decimallongitude = o.decimallongitude 
+            AND a.decimallatitude = o.decimallatitude
+        LEFT JOIN points_in_dekning d 
+            ON a.decimallongitude = d.decimallongitude 
+            AND a.decimallatitude = d.decimallatitude;
         """
     )
-    return (arter_riktig_df,)
+    return (alle_verdier_arter_df,)
 
 
 @app.cell(column=2)
+def _(alle_verdier_arter_df, mo):
+    arter_df = mo.ui.table(alle_verdier_arter_df)
+    arter_df
+    return (arter_df,)
+
+
+@app.cell
+def _(arter_df, pl):
+    combined_data = (
+        arter_df.value.group_by("Kategori 2021")
+        .agg(
+            [
+                pl.col("in_omr")
+                .sum()
+                .alias(
+                    "MI-typer"
+                ),  # true=1 og false=0, slik at sum er da lik alle som møter dette kriteriet.
+                pl.col("outside_omr_inside_dekning")
+                .sum()
+                .alias("Kartlagt øvrig natur - skog"),
+                pl.col("naturskog_value")
+                .is_between(2, 7)
+                .sum()
+                .alias("Naturskogsnærhet 2-7"),
+                (pl.col("naturskog_value") == 1).sum().alias("Naturskogsnærhet 1"),
+            ]
+        )
+        .unpivot(
+            index="Kategori 2021", variable_name="category", value_name="count"
+        )
+    )
+
+    combined_data
+    return (combined_data,)
+
+
+@app.cell
+def _(combined_data, plt, redlist_order, sns):
+    # Create pivot table for heatmap
+    pivot_data = (
+        combined_data.to_pandas()
+        .pivot(index="category", columns="Kategori 2021", values="count")
+        .fillna(0)
+    )
+
+    # Define desired order for categories (y-axis)
+    category_order = [
+        "MI-typer",
+        "Kartlagt øvrig natur - skog",
+        "Naturskogsnærhet 2-7",
+        "Naturskogsnærhet 1",
+    ]
+
+
+    # Reindex to desired order
+    pivot_data = pivot_data.reindex(
+        index=[cat for cat in category_order if cat in pivot_data.index],
+        columns=[col for col in redlist_order if col in pivot_data.columns],
+    )
+
+    # Add sum column
+    pivot_data["Sum"] = pivot_data.sum(axis=1)
+
+    # Create heatmap
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    sns.heatmap(
+        pivot_data,
+        annot=True,
+        fmt=".0f",
+        cmap="Blues",
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": "Antall observasjoner"},
+        ax=ax,
+    )
+
+    # Replace comma separators with spaces
+    for text in ax.texts:
+        value = text.get_text()
+        # Format with thousand separator and replace comma with space
+        text.set_text(f"{float(value):,.0f}".replace(",", " "))
+
+    ax.set_title(
+        "Fordeling av rødlista lav, sopp og moser registrert i skog etter 2010 på ulike kategorier",
+        fontsize=13,
+        pad=15,
+    )
+    ax.set_xlabel("Rødlistekategori", fontsize=11)
+    ax.set_ylabel("", fontsize=11)
+
+    plt.tight_layout()
+    plt.gca()
+    return
+
+
+@app.cell(column=3)
 def _(mo):
     mo.md(r"""
-    ### Statestikik på arter som er innenfor dekningsområdet, men utenfor MI = Øvrig natur
+    ### Husk at tetthet kun er for nasjonale data, du har ikke for lokale. Webjørn har lagd, men ikke med klasse 1. Usikker på om du skal be han gjøre det?
     """)
     return
 
 
 @app.cell
-def _(arter_alle_geo_df, mo):
+def _(mo):
+    mo.md(r"""
+    ## Statestikk på fordeling av arter i ulike anturskogsnærhetklasser
+    Velg artsutvalg og "raster utvalg"
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(arter_filtrert_MI_df, arts_obs_with_values, mo):
+    dropdown = mo.ui.dropdown(
+        options={
+            "Alle arter": arts_obs_with_values,
+            "Arter innad dekning og utad MI-type": arter_filtrert_MI_df,
+        },
+        label="Velg artsutvalg",
+        value="Arter innad dekning og utad MI-type",
+    )
+    dropdown
+    return (dropdown,)
+
+
+@app.cell
+def _(dropdown, mo):
     # Brukke denne til å filtrer i figuren
-    arter_riktig_df = mo.ui.table(arter_alle_geo_df, selection="multi")
+    arter_riktig_df = mo.ui.table(dropdown.value, selection="multi")
     arter_riktig_df
     return (arter_riktig_df,)
 
@@ -253,7 +359,7 @@ def _(density_data, filtered_data, grouped_data):
     ]
 
     # Define the desired order for naturskog_value (x-axis)
-    naturskog_order = ["Skog", "2-N", "3-N", "4-N", "5-N", "6-N", "7-N"]
+    naturskog_order = ["1-N", "2-N", "3-N", "4-N", "5-N", "6-N", "7-N"]
 
     # Prepare count matrix with specific order
     count_matrix = (
@@ -320,14 +426,14 @@ def _(density_data, filtered_data, grouped_data):
     _ax2.set_ylabel("Rødlistekategori", fontsize=11)
 
     plt.suptitle(
-        "Rødlista sopp, lav, moser og karplanter for øvrig natur i skog\n fordelt på vanlig skog og naturskogsklasser (N2-7) ",
+        "Rødlista sopp, lav, moser og karplanter for øvrig natur i skog\n fordelt på naturskogsklasser (N1-7) ",
         fontsize=14,
         y=1,
     )
     _fig.text(
         0.1,
         0.01,
-        "*Analysen omfatter alle artsobservasjoner registrert i skog iht. grunnkart for arealregnskap i hele Norge fra 2010 hvor\n observasjonen er utenfor kartlagte MI-typer, men innenfor dekningsområdet til MI-kartleggingen.",
+        "*Analysen omfatter alle artsobservasjoner registrert i skog iht. SR-16 avgrensninger i hele Norge fra 2010.",
         ha="left",
         fontsize=10,
         color="black",
@@ -338,91 +444,16 @@ def _(density_data, filtered_data, grouped_data):
     plt.tight_layout(rect=[0.1, 0.05, 1, 0.99], h_pad=3.0)
 
     plt.gca()
-    return plt, sns
-
-
-@app.cell(hide_code=True)
-def _(density_data, np, plt, sns):
-    # Prepare density matrix
-    _dens_mat = (
-        density_data.to_pandas()
-        .pivot(
-            index="Kategori 2021",
-            columns="naturskog_value",
-            values="density_per_km2",
-        )
-        .fillna(0)
-    )
-
-    _rl_order = ["CR", "EN", "VU", "NT", "DD", "RE"]
-    _dens_mat = _dens_mat.reindex(
-        [cat for cat in _rl_order if cat in _dens_mat.index]
-    )
-
-    # Calculate fold change (ratio) from baseline (Skog)
-    _fold_change = _dens_mat.copy()
-    for col in _fold_change.columns:
-        if col != "Skog":
-            # Add small constant to avoid division by zero
-            _fold_change[col] = (_dens_mat[col] + 1e-10) / (
-                _dens_mat["Skog"] + 1e-10
-            )
-
-    _fold_change = _fold_change.drop(columns=["Skog"])
-
-    # Create custom annotations showing fold change
-    _annot_fc = np.empty(_fold_change.shape, dtype=object)
-    for i in range(_fold_change.shape[0]):
-        for j in range(_fold_change.shape[1]):
-            val = _fold_change.iloc[i, j]
-            _annot_fc[i, j] = f"{val:.2f}x"
-
-    _fig_fc, _ax_fc = plt.subplots(1, 1, figsize=(10, 6))
-
-    sns.heatmap(
-        _fold_change,
-        annot=_annot_fc,
-        fmt="",
-        cmap="RdYlGn",
-        center=1,  # Center at 1x (no change)
-        linewidths=0.5,
-        linecolor="white",
-        cbar_kws={"label": "Relativ endring (ratio)"},
-        ax=_ax_fc,
-    )
-
-    _ax_fc.set_title(
-        "Relativ endring i observasjonstetthet mellom naturskogsklasser (N2-7) og vanlig skog",
-        fontsize=13,
-        pad=15,
-    )
-    _ax_fc.set_xlabel("Naturskogsnærhet", fontsize=11)
-    _ax_fc.set_ylabel("Rødlistekategori", fontsize=11)
-
-    _fig_fc.text(
-        0.1,
-        0.01,
-        "*Verdier > 1.0 indikerer høyere tetthet enn i skog uten naturskogsnærhet og motsatt",
-        ha="left",
-        fontsize=10,
-        color="black",
-        wrap=True,
-        verticalalignment="bottom",
-    )
-
-    plt.tight_layout(rect=[0.05, 0.05, 1, 0.95])
-
-    plt.gca()
-    return
+    return plt, redlist_order, sns
 
 
 @app.cell
 def _(naturskog, np, pl):
-    unike_klasser, counts = np.unique(
+    unike_klasser_nasjonalt, counts = np.unique(
         naturskog.values.flatten(), return_counts=True
     )
     klasse_distribusjon = pl.DataFrame(
-        {"Klasse": unike_klasser, "Pixel_Count": counts}
+        {"Klasse": unike_klasser_nasjonalt, "Pixel_Count": counts}
     )
 
     klasse_distribusjon
@@ -433,7 +464,7 @@ def _(naturskog, np, pl):
 def _():
     mapping = {
         255: "Ikke skog",
-        1: "Skog",
+        1: "1-N",
         2: "2-N",
         3: "3-N",
         4: "4-N",
@@ -460,13 +491,9 @@ def _(klasse_distribusjon, mapping, pl):
 
 
 @app.cell
-def _(arter_alle_geo_df, arter_riktig_df, mapping, pl):
+def _(arter_riktig_df, mapping, pl):
     # Group by naturskog_value and Kategori 2021, count observations
-    filtered_data = (
-        arter_riktig_df.value
-        if len(arter_riktig_df.value) > 0
-        else arter_alle_geo_df
-    )
+    filtered_data = arter_riktig_df.value
 
     grouped_data_med_ikke_skog = (
         filtered_data.filter(~pl.col("Kategori 2021").is_in(["DD", "NT°"]))
@@ -510,7 +537,7 @@ def _(grouped_data, klasse_dist_renamed, pl):
     return (density_data,)
 
 
-@app.cell(column=3)
+@app.cell
 def _(mo):
     mo.md(r"""
     ### Analyse av hogstår sett opp mot rødlistearter
@@ -526,6 +553,61 @@ def _(arts_obs_with_values, pl):
     )
     arter_med_hogsttidspunkt
     return
+
+
+@app.cell
+def _(arts_obs_gdf, naturtype_dekning_projected, naturtype_omr_projected):
+    # Convert geometry columns to WKT format for DuckDB
+    arts_obs_for_duckdb = arts_obs_gdf.copy()
+    arts_obs_for_duckdb["geometry_wkt"] = arts_obs_gdf.geometry.to_wkt()
+    arts_obs_for_duckdb = arts_obs_for_duckdb.drop(columns=["geometry"])
+
+    dekning_for_duckdb = naturtype_dekning_projected.copy()
+    dekning_for_duckdb["geometry_wkt"] = (
+        naturtype_dekning_projected.geometry.to_wkt()
+    )
+    dekning_for_duckdb = dekning_for_duckdb.drop(columns=["geometry"])
+
+    omr_for_duckdb = naturtype_omr_projected.copy()
+    omr_for_duckdb["geometry_wkt"] = naturtype_omr_projected.geometry.to_wkt()
+    omr_for_duckdb = omr_for_duckdb.drop(columns=["geometry"])
+    return arts_obs_for_duckdb, dekning_for_duckdb, omr_for_duckdb
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _(arts_obs_for_duckdb, dekning_for_duckdb, mo, omr_for_duckdb):
+    arter_filtrert_MI_df = mo.sql(
+        f"""
+        INSTALL spatial;
+        LOAD spatial;
+
+        WITH points_in_dekning AS (
+            SELECT DISTINCT a.*
+            FROM arts_obs_for_duckdb a, dekning_for_duckdb d
+            WHERE ST_Within(
+                ST_GeomFromText(a.geometry_wkt), 
+                ST_GeomFromText(d.geometry_wkt)
+            )
+        ),
+        points_in_omr AS (
+            SELECT DISTINCT a.*
+            FROM arts_obs_for_duckdb a, omr_for_duckdb o
+            WHERE ST_Within(
+                ST_GeomFromText(a.geometry_wkt), 
+                ST_GeomFromText(o.geometry_wkt)
+            )
+        )
+        SELECT * FROM points_in_dekning
+        EXCEPT
+        SELECT * FROM points_in_omr;
+        """
+    )
+    return (arter_filtrert_MI_df,)
 
 
 @app.cell(column=4)
