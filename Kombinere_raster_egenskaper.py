@@ -35,11 +35,11 @@ def _(gpd):
         layer="Kalkinnhold_berggrunnN250",
     )
 
-    #rydder data
+    # rydder data
     kalk_data_clean = kalk_data[
-        (~kalk_data.geometry.is_empty) & 
-        (kalk_data.geometry.notna()) &
-        (kalk_data["kalkinnhold_hovedbergart"].notna())
+        (~kalk_data.geometry.is_empty)
+        & (kalk_data.geometry.notna())
+        & (kalk_data["kalkinnhold_hovedbergart"].notna())
     ]
     return (kalk_data_clean,)
 
@@ -115,33 +115,73 @@ def _(kalk_data_reprojected, naturskog, np, rasterio, xr):
     kalk_raster.rio.write_transform(naturskog.rio.transform(), inplace=True)
 
     kalk_raster
-    return kalk_col_name, kalk_raster
+    return (kalk_raster,)
 
 
 @app.cell
+def _(kalk_raster, naturskog):
+    # 1. Flatten the grids into 1D arrays
+    naturskog_flat = naturskog.data[0].flatten()
+    kalk_flat = kalk_raster.data[0].flatten()  # Remove [kalk_col_name] indexing
+    return kalk_flat, naturskog_flat
+
+
+@app.cell
+def _(kalk_flat, naturskog_flat, pl):
+    naturskog_mask = (naturskog_flat > 0) & (naturskog_flat != 255)
+    kalk_mask = kalk_flat > 0
+    combined_mask = naturskog_mask & kalk_mask
+
+    # Apply filter to both arrays
+    naturskog_filtered = naturskog_flat[combined_mask]
+    kalk_filtered = kalk_flat[combined_mask]
+
+    # Now create DataFrame with filtered data
+    kalk_naturskog_clean = pl.DataFrame(
+        {"naturskog": naturskog_filtered, "kalk": kalk_filtered}
+    )
+
+    kalk_naturskog_clean
+    return (kalk_naturskog_clean,)
+
+
+@app.cell
+def _(kalk_naturskog_clean, naturskog, pl):
+    # Extract pixel dimensions
+    pixel_width = abs(naturskog.rio.resolution()[0])
+    pixel_height = abs(naturskog.rio.resolution()[1])
+    pixel_area_m2 = pixel_width * pixel_height
+
+    # Calculate areas for each naturskog-kalk combination
+    area_summary = (
+        kalk_naturskog_clean.group_by(["naturskog", "kalk"])
+        .agg(pl.len().alias("pixel_count"))
+        .with_columns(
+            [
+                (pl.col("pixel_count") * pixel_area_m2).alias("area_m2"),
+                (pl.col("pixel_count") * pixel_area_m2 / 10_000).alias("area_ha"),
+                (pl.col("pixel_count") * pixel_area_m2 / 1_000_000).alias(
+                    "area_km2"
+                ),
+            ]
+        )
+        .sort(["kalk", "naturskog"])
+    )
+
+    area_summary
+    return
+
+
+@app.cell(column=2)
 def _(mo):
     mo.md(r"""
-    #send mail it tromsø
+    ## Visualiserer
     """)
     return
 
 
 @app.cell
-def _(kalk_col_name, kalk_raster, naturskog, pl):
-    # 1. Flatten the grids into 1D arrays
-    # naturskog is xarray, .data gives values. [0] selects the first band.
-    naturskog_flat = naturskog.data[0].flatten()
-    kalk_flat = kalk_raster[kalk_col_name].data[0].flatten()
-
-    # 2. Combine into a Polars DataFrame
-    df_combined = pl.DataFrame({"naturskog": naturskog_flat, "kalk": kalk_flat})
-    return (df_combined,)
-
-
-@app.cell
-def _(df_combined, pl):
-    # 3. Filter to keep only relevant data (remove background/0 values)
-    df_clean = df_combined.filter((pl.col("naturskog") > 0) & (pl.col("kalk") > 0))
+def _():
     return
 
 
