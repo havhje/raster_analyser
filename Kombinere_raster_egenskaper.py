@@ -5,6 +5,41 @@ app = marimo.App(width="columns")
 
 
 @app.cell(column=0)
+def _(combined_mask, kalk_flat, mo, naturskog_flat, pl):
+    # Add this diagnostic cell
+    mo.md("## Coverage Analysis - CRITICAL")
+
+    total_pixels = len(naturskog_flat)
+    naturskog_valid_pixels = (naturskog_flat != 255).sum()
+    kalk_valid_pixels = (kalk_flat != 0).sum()
+    overlap_pixels = combined_mask.sum()
+
+    coverage_analysis = pl.DataFrame({
+        "Category": [
+            "Total raster pixels",
+            "Naturskog valid (classes 1-7)",
+            "Kalk valid (classes 1-5)", 
+            "Overlap (both valid)",
+            "Naturskog WITH kalk data (%)",
+            "Naturskog WITHOUT kalk data",
+            "Data loss from no kalk coverage"
+        ],
+        "Count": [
+            f"{total_pixels:,}",
+            f"{naturskog_valid_pixels:,}",
+            f"{kalk_valid_pixels:,}",
+            f"{overlap_pixels:,}",
+            f"{(overlap_pixels / naturskog_valid_pixels * 100):.2f}%",
+            f"{(naturskog_valid_pixels - overlap_pixels):,}",
+            f"{((naturskog_valid_pixels - overlap_pixels) / naturskog_valid_pixels * 100):.2f}%"
+        ]
+    })
+
+    coverage_analysis
+    return
+
+
+@app.cell(column=1)
 def _():
     import geopandas as gpd
     import marimo as mo
@@ -65,7 +100,7 @@ def _():
     return
 
 
-@app.cell(column=1)
+@app.cell(column=2)
 def _(mo):
     mo.md(r"""
     Legger alle verdiene til et felles raster
@@ -142,7 +177,7 @@ def _(kalk_flat, naturskog_flat, pl):
     )
 
     kalk_naturskog_clean
-    return (kalk_naturskog_clean,)
+    return combined_mask, kalk_naturskog_clean
 
 
 @app.cell
@@ -169,10 +204,10 @@ def _(kalk_naturskog_clean, naturskog, pl):
     )
 
     area_summary
-    return
+    return (area_summary,)
 
 
-@app.cell(column=2)
+@app.cell(column=3)
 def _(mo):
     mo.md(r"""
     ## Visualiserer
@@ -181,7 +216,78 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(area_summary, pl):
+    # Add percentage column to area_summary
+    area_summary_pct = area_summary.with_columns(
+        (pl.col("area_km2") / pl.col("area_km2").sum() * 100).alias("percentage")
+    )
+
+    area_summary_pct
+    return (area_summary_pct,)
+
+
+@app.cell
+def _(area_summary, area_summary_pct):
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    # Create pivot tables
+    area_km2_matrix = (
+        area_summary.to_pandas()
+        .pivot(index="kalk", columns="naturskog", values="area_km2")
+        .fillna(0)
+    )
+
+    percentage_matrix = (
+        area_summary_pct.to_pandas()
+        .pivot(index="kalk", columns="naturskog", values="percentage")
+        .fillna(0)
+    )
+
+    # Create figure with two subplots
+    _fig, (_ax1, _ax2) = plt.subplots(2, 1, figsize=(10, 12))
+
+    # Left plot: Absolute area
+    sns.heatmap(
+        area_km2_matrix,
+        annot=True,
+        fmt=".2f",
+        cmap="YlGnBu",
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": "Areal (km²)"},
+        ax=_ax1,
+    )
+    _ax1.invert_yaxis()
+    _ax1.set_title("Areal i km²", fontsize=13, pad=15)
+    _ax1.set_xlabel("Naturskogsnærhet klasse", fontsize=11)
+    _ax1.set_ylabel("Kalkinnhold klasse", fontsize=11)
+
+    # Right plot: Percentage
+    sns.heatmap(
+        percentage_matrix,
+        annot=True,
+        fmt=".2f",
+        cmap="YlGnBu",
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": "Prosentandel (%)"},
+        ax=_ax2,
+    )
+    _ax2.invert_yaxis()
+    _ax2.set_title("Prosentandel", fontsize=13, pad=15)
+    _ax2.set_xlabel("Naturskogsnærhet klasse", fontsize=11)
+    _ax2.set_ylabel("Kalkinnhold klasse", fontsize=11)
+
+    plt.suptitle(
+        "Naturskog fordelt på kalkinnhold i berggrunn",
+        fontsize=14,
+        y=1.02
+    )
+
+    plt.tight_layout()
+
+    plt.gca()
     return
 
 
