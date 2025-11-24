@@ -304,6 +304,45 @@ def _(combined_data, plt, redlist_order, sns):
     return
 
 
+@app.cell
+def _(klasse_dist_renamed, pl):
+    # Calculate area from pixel counts
+    # Each pixel = 16m × 16m = 256 m²
+    # 1 km² = 1,000,000 m²
+
+    area_calculation = klasse_dist_renamed.with_columns(
+        ((pl.col("Pixel_Count") * 256) / 1_000_000).alias("Area_km2")
+    )
+
+    # Get area for class 1
+    area_klass_1 = (
+        area_calculation.filter(pl.col("Klasse") == "1-N")
+        .select("Area_km2")
+        .item()
+    )
+
+    # Get combined area for classes 2-7
+    area_klass_2_7 = (
+        area_calculation.filter(
+            pl.col("Klasse").is_in(["2-N", "3-N", "4-N", "5-N", "6-N", "7-N"])
+        )
+        .select(pl.col("Area_km2").sum())
+        .item()
+    )
+
+    # Create summary dataframe
+    area_summary = pl.DataFrame(
+        {
+            "Kategori": ["Naturskogsnærhet 1", "Naturskogsnærhet 2-7"],
+            "Areal (km²)": [area_klass_1, area_klass_2_7],
+            "Areal (1000 km²)": [area_klass_1 / 1000, area_klass_2_7 / 1000],
+        }
+    )
+
+    area_summary
+    return
+
+
 @app.cell(column=3)
 def _(mo):
     mo.md(r"""
